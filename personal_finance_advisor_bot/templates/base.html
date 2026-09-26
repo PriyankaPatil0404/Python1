@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}FinPilot{% endblock %} · Personal Finance Advisor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body>
+<div class="app-shell">
+  {% if current_user.is_authenticated %}
+  <aside class="sidebar">
+    <a class="brand" href="{{ url_for('dashboard') }}"><span class="brand-mark">₹</span><span>FinPilot</span></a>
+    <div class="side-label">Workspace</div>
+    <nav>
+      <a class="nav-link {% if request.endpoint=='dashboard' %}active{% endif %}" href="{{ url_for('dashboard') }}">⌂ <span>Dashboard</span></a>
+      <a class="nav-link {% if request.endpoint=='income' %}active{% endif %}" href="{{ url_for('income') }}">＋ <span>Income</span></a>
+      <a class="nav-link {% if request.endpoint=='expenses' %}active{% endif %}" href="{{ url_for('expenses') }}">↘ <span>Expenses</span></a>
+      <a class="nav-link {% if request.endpoint=='budgets' %}active{% endif %}" href="{{ url_for('budgets') }}">▣ <span>Budgets</span></a>
+      <a class="nav-link {% if request.endpoint=='advisor' %}active{% endif %}" href="{{ url_for('advisor') }}">✦ <span>AI Advisor</span></a>
+      <a class="nav-link {% if request.endpoint=='reports' %}active{% endif %}" href="{{ url_for('reports') }}">▤ <span>Reports</span></a>
+    </nav>
+    <div class="side-bottom">
+      <a class="nav-link {% if request.endpoint=='profile' %}active{% endif %}" href="{{ url_for('profile') }}">⚙ <span>Profile</span></a>
+      <a class="nav-link" href="{{ url_for('logout') }}">↪ <span>Logout</span></a>
+    </div>
+  </aside>
+  {% endif %}
+  <main class="main {% if not current_user.is_authenticated %}full{% endif %}">
+    {% if current_user.is_authenticated %}
+    <header class="topbar"><div><div class="eyebrow">PERSONAL FINANCE</div><h1>{% block page_title %}Dashboard{% endblock %}</h1></div><div class="user-pill"><span>{{ (current_user.name[0]|upper) if current_user.name else 'U' }}</span>{{ current_user.name }}</div></header>
+    {% endif %}
+    <section class="content">
+      {% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}<div class="flash-stack">{% for category,message in messages %}<div class="flash {{ category }}">{{ message }}</div>{% endfor %}</div>{% endif %}{% endwith %}
+      {% block content %}{% endblock %}
+    </section>
+  </main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script><script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body></html>

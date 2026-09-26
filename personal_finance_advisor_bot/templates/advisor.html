@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+{% block page_title %}AI Advisor{% endblock %}
+{% block content %}
+<div class="advisor-shell">
+  <div class="chat-panel">
+    <div class="chat-header">
+      <div class="chat-avatar">✦</div>
+      <div class="chat-title">
+        <div class="eyebrow">PERSONAL FINANCE AI</div>
+        <h2>Finny — Your Finance Advisor</h2>
+        <p><span class="status-dot"></span> Online · Knows your current financial data</p>
+      </div>
+      <button class="chat-reset" id="clearChat" title="Clear conversation">↻</button>
+    </div>
+
+    <div class="chat-context">
+      <div><span>Income</span><strong>₹{{ '%.0f'|format(s.income) }}</strong></div>
+      <div><span>Expenses</span><strong>₹{{ '%.0f'|format(s.expenses) }}</strong></div>
+      <div><span>Available</span><strong class="{{ 'positive' if s.savings >= 0 else 'negative' }}">₹{{ '%.0f'|format(s.savings) }}</strong></div>
+      <div><span>Savings goal</span><strong>₹{{ '%.0f'|format(current_user.savings_goal or 0) }}</strong></div>
+    </div>
+
+    <div class="chat-messages" id="chatMessages">
+      <div class="message-row bot-row">
+        <div class="message-avatar">✦</div>
+        <div class="message bot-message">
+          <div class="message-name">Finny</div>
+          <div>Hi {{ current_user.name.split(' ')[0] }}! 👋 I’m your personal finance advisor. I can analyze your income and expenses, help you plan a budget, and suggest practical ways to improve your savings.</div>
+          <div class="message-time">Just now</div>
+        </div>
+      </div>
+      <div class="suggestions" id="suggestions">
+        <button data-prompt="Analyze my finances this month">📊 Analyze my finances</button>
+        <button data-prompt="Where am I overspending?">🔎 Find overspending</button>
+        <button data-prompt="Create a realistic budget for me">💰 Create my budget</button>
+        <button data-prompt="How can I reach my savings goal faster?">🎯 Improve my savings</button>
+      </div>
+    </div>
+
+    <div class="typing" id="typing"><span></span><span></span><span></span> Finny is thinking…</div>
+    <form class="chat-composer" id="chatForm">
+      <textarea id="chatInput" rows="1" maxlength="1000" placeholder="Ask anything about your finances…" autocomplete="off"></textarea>
+      <button type="submit" id="sendBtn" class="send-btn" aria-label="Send">➤</button>
+    </form>
+    <div class="chat-disclaimer">AI-generated guidance is educational, not professional financial, investment, tax, or legal advice.</div>
+  </div>
+
+  <aside class="advisor-side">
+    <div class="panel health-card">
+      <div class="panel-head"><div><h2>Financial snapshot</h2><p>Your current month</p></div><span class="health-badge">LIVE</span></div>
+      {% set rate = (s.savings / s.income * 100) if s.income else 0 %}
+      <div class="health-score"><div class="score-ring"><strong>{{ '%.0f'|format(rate) }}%</strong><span>saved</span></div><div><b>{{ 'Healthy' if rate >= 20 else ('Needs attention' if rate < 10 else 'Building') }}</b><p>Your savings rate for this month.</p></div></div>
+      <div class="snapshot-line"><span>Top spending</span><b>{% if s.categories %}{{ s.categories|dictsort(by='value')|reverse|first|first }}{% else %}No expenses yet{% endif %}</b></div>
+    </div>
+    <div class="panel quick-help">
+      <h2>Try asking</h2>
+      <p>Use natural language. Finny will use the financial data you've recorded.</p>
+      <div class="help-list">
+        <button data-prompt="How much did I spend this month?">“How much did I spend?”</button>
+        <button data-prompt="Give me 3 ways to reduce my expenses">“How can I cut expenses?”</button>
+        <button data-prompt="Suggest an emergency fund plan based on my data">“Help me build an emergency fund”</button>
+        <button data-prompt="Compare my income and expenses and explain what it means">“Explain my cash flow”</button>
+      </div>
+    </div>
+  </aside>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const messages = document.getElementById('chatMessages');
+const form = document.getElementById('chatForm');
+const input = document.getElementById('chatInput');
+const sendBtn = document.getElementById('sendBtn');
+const typing = document.getElementById('typing');
+const suggestions = document.getElementById('suggestions');
+
+function timeNow(){ return new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); }
+function addMessage(text, who='bot'){
+  const row=document.createElement('div'); row.className='message-row '+(who==='user'?'user-row':'bot-row');
+  const avatar=document.createElement('div'); avatar.className='message-avatar'; avatar.textContent=who==='user'?'You':'✦';
+  const bubble=document.createElement('div'); bubble.className='message '+(who==='user'?'user-message':'bot-message');
+  if(who==='bot') { const name=document.createElement('div'); name.className='message-name'; name.textContent='Finny'; bubble.appendChild(name); }
+  const body=document.createElement('div'); body.className='message-body';
+  body.innerHTML = who==='bot' ? formatAI(text) : escapeHtml(text).replace(/\n/g,'<br>');
+  bubble.appendChild(body); const t=document.createElement('div'); t.className='message-time'; t.textContent=timeNow(); bubble.appendChild(t);
+  row.appendChild(avatar); row.appendChild(bubble); messages.appendChild(row); messages.scrollTop=messages.scrollHeight;
+}
+function escapeHtml(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+function formatAI(s){
+  let safe=escapeHtml(s||'');
+  safe=safe.replace(/^### (.*)$/gm,'<h4>$1</h4>');
+  safe=safe.replace(/^## (.*)$/gm,'<h4>$1</h4>');
+  safe=safe.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
+  safe=safe.replace(/^- (.*)$/gm,'<div class="ai-bullet">• $1</div>');
+  safe=safe.replace(/\n\n/g,'<br>'); safe=safe.replace(/\n/g,'<br>');
+  return safe;
+}
+async function sendMessage(prompt){
+  prompt=(prompt||'').trim(); if(!prompt) return;
+  addMessage(prompt,'user'); input.value=''; input.style.height='auto';
+  if(suggestions) suggestions.style.display='none'; typing.classList.add('show'); sendBtn.disabled=true;
+  try{
+    const res=await fetch('{{ url_for("api_advisor_chat") }}',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:prompt})});
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.error||'Something went wrong');
+    addMessage(data.reply,'bot');
+  }catch(err){ addMessage('I could not process that right now. Please try again.','bot'); }
+  finally{ typing.classList.remove('show'); sendBtn.disabled=false; input.focus(); }
+}
+form.addEventListener('submit',e=>{e.preventDefault();sendMessage(input.value);});
+input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();form.requestSubmit();}});
+input.addEventListener('input',()=>{input.style.height='auto';input.style.height=Math.min(input.scrollHeight,120)+'px';});
+document.querySelectorAll('[data-prompt]').forEach(b=>b.addEventListener('click',()=>sendMessage(b.dataset.prompt)));
+document.getElementById('clearChat').addEventListener('click',()=>{messages.innerHTML=''; suggestions.style.display='grid'; addMessage('Conversation cleared. What would you like to work on?','bot'); messages.appendChild(suggestions);});
+const urlParams = new URLSearchParams(window.location.search);
+const initialPrompt = urlParams.get('prompt');
+if(initialPrompt) {
+  sendMessage(initialPrompt);
+}
+</script>
+{% endblock %}

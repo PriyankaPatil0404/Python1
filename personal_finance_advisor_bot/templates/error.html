@@ -1,0 +1,1 @@
+{% extends 'base.html' %}{% block content %}<div class="auth-wrap"><div class="auth-card"><div class="brand-mark centered-mark">!</div><h1>{{ code }}</h1><p class="muted">{{ message }}</p><a class="btn primary full-btn" href="{{ url_for('dashboard') if current_user.is_authenticated else url_for('index') }}">Go back</a></div></div>{% endblock %}
