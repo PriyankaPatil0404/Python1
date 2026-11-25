@@ -1,4 +1,5 @@
 # FinPilot — Personal Finance Advisor Bot
+demo video link : https://drive.google.com/file/d/1ZPK0gUFOcRfaVO-Fc10_D5Ln-j1cwolf/view?usp=drivesdk
 
 A full-stack AI-powered personal finance management application built with Flask, SQLAlchemy, SQLite and Gemini.
 
